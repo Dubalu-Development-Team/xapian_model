@@ -124,5 +124,12 @@ class XProfile:
                 raise
         self._data = data
 
+    def delete(self) -> None:
+        index = self.INDEX_TEMPLATE.format(
+            entity_id=self._entity_id,
+            profile_admin_api_id=self.PROFILE_ADMIN_API_ID,
+        )
+        client.delete(index, id=self._data.get('id'))
+
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self._data!r})"
