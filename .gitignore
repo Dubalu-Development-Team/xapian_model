@@ -6,6 +6,9 @@ dist/
 build/
 .venv/
 
+# Testing
+.coverage
+
 # OS
 .DS_Store
 
