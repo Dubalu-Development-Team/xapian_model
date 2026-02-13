@@ -23,6 +23,12 @@ dependencies = [
     "pyxapiand",
 ]
 
+[project.optional-dependencies]
+test = ["pytest", "pytest-cov"]
+
 [project.urls]
 Homepage = "https://github.com/Dubalu-Development-Team/xapian_model"
 Repository = "https://github.com/Dubalu-Development-Team/xapian_model"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
