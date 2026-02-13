@@ -71,12 +71,12 @@ class Manager:
             aggregations=getattr(response, 'aggregations', None),
         )
 
-    def get(self, entity_id: str, id: str) -> XProfile:
+    def get(self, entity_id: str, id: str, *, volatile: bool = False) -> XProfile:
         index = self.model_cls.INDEX_TEMPLATE.format(
             entity_id=entity_id,
             profile_admin_api_id=self.model_cls.PROFILE_ADMIN_API_ID,
         )
-        data = client.get(index, id=id)
+        data = client.get(index, id=id, volatile=volatile)
         instance = self.model_cls(data)
         instance._entity_id = entity_id
         return instance
