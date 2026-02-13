@@ -8,8 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Environment
 
-- Python 3.12, virtual environment at `.venv/`
-- Activate: `source .venv/bin/activate`
+- Python 3.12 (pinned via `.python-version`), virtual environment at `.venv/`
+- Activation is automatic via direnv (`.envrc`); just `cd` into the project
 - Build system: hatchling (configured in `pyproject.toml`)
 - Dependency: `pyxapiand`
 
