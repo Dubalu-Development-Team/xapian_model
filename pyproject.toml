@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "xapian-model"
+version = "0.1.0"
+description = "A generic Python ORM-like base class for building models backed by Xapiand"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [
+    { name = "Dubalu International" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Database :: Front-Ends",
+]
+dependencies = [
+    "pyxapiand",
+]
+
+[project.urls]
+Homepage = "https://github.com/Dubalu-Development-Team/xapian_model"
+Repository = "https://github.com/Dubalu-Development-Team/xapian_model"
