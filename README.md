@@ -4,6 +4,7 @@ A generic Python ORM-like base class for building models backed by [Xapiand](htt
 
 ## Features
 
+- **Fully async** — All Xapiand operations use `async`/`await` (powered by `pyxapiand>=2.0.0` and `httpx`).
 - **BaseXapianModel** — Base class with attribute interception, save/delete operations, and template-based dynamic index naming.
 - **Manager** — Descriptor-based manager providing `create()`, `get()`, and `filter()` query methods.
 - **SearchResults** — Dataclass wrapping search results with total counts and aggregations.
@@ -17,15 +18,16 @@ pip install xapian-model
 
 ### Dependencies
 
-Install the [pyxapiand](https://github.com/Dubalu-Development-Team/xapiand) client library:
+Requires [pyxapiand](https://github.com/Dubalu-Development-Team/xapiand) 2.0.0+ (async client):
 
 ```bash
-pip install pyxapiand
+pip install "pyxapiand>=2.0.0"
 ```
 
 ## Quick Start
 
 ```python
+import asyncio
 from xapian_model.base import BaseXapianModel
 
 class Product(BaseXapianModel):
@@ -36,29 +38,33 @@ class Product(BaseXapianModel):
         "active": {"_type": "boolean", "_default": True},
     }
 
-# Create a product
-product = Product.objects.create(store_id="store1", name="Widget", price=9.99)
+async def main():
+    # Create a product
+    product = await Product.objects.create(store_id="store1", name="Widget", price=9.99)
 
-# Retrieve by ID
-product = Product.objects.get(id="abc123", store_id="store1")
+    # Retrieve by ID
+    product = await Product.objects.get(id="abc123", store_id="store1")
 
-# Search
-results = Product.objects.filter(query="widget", store_id="store1", limit=10)
-for item in results.results:
-    print(item.name, item.price)
+    # Search
+    results = await Product.objects.filter(query="widget", store_id="store1", limit=10)
+    for item in results.results:
+        print(item.name, item.price)
 
-# Update and save
-product.price = 12.99
-product.save()
+    # Update and save
+    product.price = 12.99
+    await product.save()
 
-# Delete
-product.delete()
+    # Delete
+    await product.delete()
+
+asyncio.run(main())
 ```
 
 ## Requirements
 
 - Python 3.12+
-- [Xapiand](https://github.com/pber/xapiand) server and client library
+- [pyxapiand](https://github.com/Dubalu-Development-Team/xapiand) >= 2.0.0
+- [Xapiand](https://github.com/pber/xapiand) server
 
 ## License
 
