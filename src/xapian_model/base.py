@@ -9,7 +9,7 @@ Example:
     ...     INDEX_TEMPLATE = "/products/{category}"
     ...     SCHEMA = {"name": {"_type": "text"}}
     ...
-    >>> product = Product.objects.create(category="electronics", name="Phone")
+    >>> product = await Product.objects.create(category="electronics", name="Phone")
     >>> product.name
     'Phone'
 """
@@ -93,7 +93,7 @@ class Manager:
         fields = _template_fields(self.model_cls.INDEX_TEMPLATE)
         return {f: kwargs.pop(f) for f in fields if f in kwargs}
 
-    def create(self, *, id: str | None = None, **kwargs) -> BaseXapianModel:
+    async def create(self, *, id: str | None = None, **kwargs) -> BaseXapianModel:
         """Create a new document in Xapiand and return its model instance.
 
         If the index does not yet have a schema (HTTP 412), the model's
@@ -118,18 +118,18 @@ class Manager:
         index = self.model_cls.INDEX_TEMPLATE.format(**index_params)
         body = kwargs
         try:
-            data = client.put(index, body=body, id=id)
+            data = await client.put(index, body=body, id=id)
         except TransportError as exc:
-            if exc.response is not None and exc.response.status_code == 412:
+            if exc.response.status_code == 412:
                 body['_schema'] = self.model_cls.SCHEMA
-                data = client.put(index, body=body, id=id)
+                data = await client.put(index, body=body, id=id)
             else:
                 raise
         instance = self.model_cls(data)
         instance._index_params = index_params
         return instance
 
-    def filter(
+    async def filter(
         self,
         *,
         query: str | None = None,
@@ -157,7 +157,7 @@ class Manager:
         """
         index_params = self._extract_index_params(kwargs)
         index = self.model_cls.INDEX_TEMPLATE.format(**index_params)
-        response = client.search(
+        response = await client.search(
             index,
             query=query,
             limit=limit,
@@ -177,7 +177,7 @@ class Manager:
             aggregations=getattr(response, 'aggregations', None),
         )
 
-    def get(self, *, id: str, volatile: bool = False, **kwargs) -> BaseXapianModel:
+    async def get(self, *, id: str, volatile: bool = False, **kwargs) -> BaseXapianModel:
         """Retrieve a single document by its ID.
 
         Args:
@@ -195,7 +195,7 @@ class Manager:
         """
         index_params = self._extract_index_params(kwargs)
         index = self.model_cls.INDEX_TEMPLATE.format(**index_params)
-        data = client.get(index, id=id, volatile=volatile)
+        data = await client.get(index, id=id, volatile=volatile)
         instance = self.model_cls(data)
         instance._index_params = index_params
         return instance
@@ -309,7 +309,7 @@ class BaseXapianModel:
         index_params = getattr(self, '_index_params', {})
         return self.INDEX_TEMPLATE.format(**{**self._data, **index_params})
 
-    def save(self) -> None:
+    async def save(self) -> None:
         """Persist the current document data to Xapiand.
 
         If the index does not yet have a schema (HTTP 412), the model's
@@ -323,23 +323,23 @@ class BaseXapianModel:
         index = self._get_index()
         body = self._data
         try:
-            data = client.put(index, body=body, id=body.get('id'))
+            data = await client.put(index, body=body, id=body.get('id'))
         except TransportError as exc:
-            if exc.response is not None and exc.response.status_code == 412:
+            if exc.response.status_code == 412:
                 body = {**self._data, '_schema': self.SCHEMA}
-                data = client.put(index, body=body, id=body.get('id'))
+                data = await client.put(index, body=body, id=body.get('id'))
             else:
                 raise
         self._data = data
 
-    def delete(self) -> None:
+    async def delete(self) -> None:
         """Delete this document from Xapiand.
 
         Raises:
             TransportError: If the deletion request fails.
         """
         index = self._get_index()
-        client.delete(index, id=self._data.get('id'))
+        await client.delete(index, id=self._data.get('id'))
 
     def __repr__(self) -> str:
         """Return a developer-friendly string representation.

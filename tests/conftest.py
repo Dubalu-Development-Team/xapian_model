@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from xapian_model.base import BaseXapianModel, Manager
+from xapian_model.base import BaseXapianModel
 
 
 class Product(BaseXapianModel):
@@ -25,6 +25,6 @@ class SimpleModel(BaseXapianModel):
 
 @pytest.fixture()
 def mock_client():
-    """Patch ``xapiand.client`` and return the mock object."""
-    with patch("xapian_model.base.client") as mock:
+    """Patch ``xapiand.client`` and return an AsyncMock object."""
+    with patch("xapian_model.base.client", new_callable=AsyncMock) as mock:
         yield mock

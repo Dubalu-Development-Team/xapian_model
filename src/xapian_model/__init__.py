@@ -6,3 +6,5 @@ Xapiand document fields, along with a descriptor-based
 :class:`~xapian_model.base.Manager` for querying, creating, and
 retrieving documents.
 """
+
+from __future__ import annotations
