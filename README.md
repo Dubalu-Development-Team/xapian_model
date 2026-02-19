@@ -4,7 +4,7 @@ A generic Python ORM-like base class for building models backed by [Xapiand](htt
 
 ## Features
 
-- **Fully async** — All Xapiand operations use `async`/`await` (powered by `pyxapiand>=2.0.0` and `httpx`).
+- **Fully async** — All Xapiand operations use `async`/`await` (powered by `pyxapiand>=2.1.0` and `httpx`).
 - **BaseXapianModel** — Base class with attribute interception, save/delete operations, and template-based dynamic index naming.
 - **Manager** — Descriptor-based manager providing `create()`, `get()`, and `filter()` query methods.
 - **SearchResults** — Dataclass wrapping search results with total counts and aggregations.
@@ -18,10 +18,10 @@ pip install xapian-model
 
 ### Dependencies
 
-Requires [pyxapiand](https://github.com/Dubalu-Development-Team/xapiand) 2.0.0+ (async client):
+Requires [pyxapiand](https://github.com/Dubalu-Development-Team/xapiand) 2.1.0+ (async client):
 
 ```bash
-pip install "pyxapiand>=2.0.0"
+pip install "pyxapiand>=2.1.0"
 ```
 
 ## Quick Start
@@ -63,7 +63,7 @@ asyncio.run(main())
 ## Requirements
 
 - Python 3.12+
-- [pyxapiand](https://github.com/Dubalu-Development-Team/xapiand) >= 2.0.0
+- [pyxapiand](https://github.com/Dubalu-Development-Team/xapiand) >= 2.1.0
 - [Xapiand](https://github.com/pber/xapiand) server
 
 ## License

@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Python 3.12 (pinned via `.python-version`), virtual environment at `.venv/`
 - Activation is automatic via direnv (`.envrc`); just `cd` into the project
 - Build system: hatchling (configured in `pyproject.toml`)
-- Dependency: `pyxapiand>=2.0.0` (async API based on `httpx.AsyncClient`)
+- Dependency: `pyxapiand>=2.1.0` (async API based on `httpx.AsyncClient`)
 
 ## Code Style
 

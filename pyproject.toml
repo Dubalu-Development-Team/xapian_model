@@ -20,7 +20,7 @@ classifiers = [
     "Topic :: Database :: Front-Ends",
 ]
 dependencies = [
-    "pyxapiand>=2.0.0",
+    "pyxapiand>=2.1.0",
 ]
 
 [project.optional-dependencies]
