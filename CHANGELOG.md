@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-02-26
+
+### Added
+
+- Schema meta-properties (`_required`, `_default`, `_write_only`, `_read_only`,
+  `_null`, `_choices`) for Python-layer validation, defaults, and read/write
+  field filtering — stripped before sending schemas to Xapiand.
+- `_type` alias resolution: `"json"` is accepted as an alias for `"object"` in
+  schema definitions.
+- Integration test suite (`test_integration.py`) that exercises the full CRUD
+  lifecycle and meta-properties against a live Xapiand server.
+
+### Changed
+
+- 412 schema auto-provisioning now sends `_xapiand_schema` (cleaned of
+  meta-properties) instead of the raw `SCHEMA` dict.
+
 ## [0.3.2] - 2026-02-26
 
 ### Fixed
