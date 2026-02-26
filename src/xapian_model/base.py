@@ -323,11 +323,11 @@ class BaseXapianModel:
         index = self._get_index()
         body = self._data
         try:
-            data = await client.put(index, body=body, id=body.get('id'))
+            data = await client.put(index, body=body, id=body.get('_id', body.get('id')))
         except TransportError as exc:
             if exc.response.status_code == 412:
                 body = {**self._data, '_schema': self.SCHEMA}
-                data = await client.put(index, body=body, id=body.get('id'))
+                data = await client.put(index, body=body, id=body.get('_id', body.get('id')))
             else:
                 raise
         self._data = data
@@ -339,7 +339,7 @@ class BaseXapianModel:
             TransportError: If the deletion request fails.
         """
         index = self._get_index()
-        await client.delete(index, id=self._data.get('id'))
+        await client.delete(index, id=self._data.get('_id', self._data.get('id')))
 
     def __repr__(self) -> str:
         """Return a developer-friendly string representation.
