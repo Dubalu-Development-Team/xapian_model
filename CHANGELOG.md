@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.2] - 2026-02-26
+
+### Fixed
+
+- Fix document ID lookup in `save()` and `delete()`: use `_id` (Xapiand's
+  returned key) with fallback to `id` for new unsaved instances.
+
+### Added
+
+- "Defining a Model" section in README with foreign schema example and CRUD
+  operations.
+
 ## [0.3.1] - 2026-02-19
 
 ### Changed
