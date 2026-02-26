@@ -23,6 +23,20 @@ class SimpleModel(BaseXapianModel):
     SCHEMA = {"title": {"_type": "text"}}
 
 
+class ValidatedModel(BaseXapianModel):
+    """Concrete model with meta-properties for validation testing."""
+
+    INDEX_TEMPLATE = "/validated"
+    SCHEMA = {
+        "name": {"_type": "text", "_required": True},
+        "email": {"_type": "text", "_default": ""},
+        "role": {"_type": "keyword", "_choices": ["admin", "user"]},
+        "score": {"_type": "floating", "_null": True},
+        "password": {"_type": "text", "_write_only": True},
+        "created_at": {"_type": "datetime", "_read_only": True},
+    }
+
+
 @pytest.fixture()
 def mock_client():
     """Patch ``xapiand.client`` and return an AsyncMock object."""

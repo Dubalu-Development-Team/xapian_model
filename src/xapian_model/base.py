@@ -19,7 +19,71 @@ from __future__ import annotations
 import string
 from dataclasses import dataclass
 
+from typing import Any
+
 from xapiand import client, TransportError
+
+_MODEL_META_PROPS = frozenset({
+    '_required', '_default', '_write_only', '_read_only', '_null', '_choices',
+})
+
+_TYPE_ALIASES: dict[str, str] = {
+    'json': 'object',
+}
+
+_MISSING = object()
+
+
+def _clean_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    """Strip model meta-properties and resolve type aliases in a schema dict.
+
+    Returns a copy of *schema* suitable for sending to Xapiand, with
+    keys in :data:`_MODEL_META_PROPS` removed from every nested dict
+    and ``_type`` aliases (e.g. ``"json"`` → ``"object"``) resolved.
+
+    Args:
+        schema: The model's ``SCHEMA`` dict, potentially containing
+            meta-properties like ``_required`` or ``_default``.
+
+    Returns:
+        A new dict with all meta-properties removed and type aliases
+        resolved at every level.
+    """
+    cleaned: dict[str, Any] = {}
+    for key, value in schema.items():
+        if isinstance(value, dict):
+            field = {k: v for k, v in value.items() if k not in _MODEL_META_PROPS}
+            if '_type' in field:
+                field['_type'] = _TYPE_ALIASES.get(field['_type'], field['_type'])
+            cleaned[key] = field
+        else:
+            cleaned[key] = value
+    return cleaned
+
+
+def _extract_field_meta(schema: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Extract model meta-properties from each field in the schema.
+
+    Only processes top-level keys that do not start with ``_`` and whose
+    values are dicts (i.e. field definitions).  Keys like ``_type`` or
+    ``_foreign`` at the schema root are Xapiand schema properties, not
+    field definitions, and are skipped.
+
+    Args:
+        schema: The model's ``SCHEMA`` dict.
+
+    Returns:
+        A dict mapping field names to their meta-properties.  Fields
+        with no meta-properties are omitted.
+    """
+    meta: dict[str, dict[str, Any]] = {}
+    for key, value in schema.items():
+        if key.startswith('_') or not isinstance(value, dict):
+            continue
+        field_meta = {k: v for k, v in value.items() if k in _MODEL_META_PROPS}
+        if field_meta:
+            meta[key] = field_meta
+    return meta
 
 
 def _template_fields(template: str) -> set[str]:
@@ -116,15 +180,18 @@ class Manager:
         """
         index_params = self._extract_index_params(kwargs)
         index = self.model_cls.INDEX_TEMPLATE.format(**index_params)
-        body = kwargs
+        self.model_cls._apply_defaults(kwargs)
+        self.model_cls._validate(kwargs)
+        body = self.model_cls._prepare_write_body(kwargs)
         try:
             data = await client.put(index, body=body, id=id)
         except TransportError as exc:
             if exc.response.status_code == 412:
-                body['_schema'] = self.model_cls.SCHEMA
+                body['_schema'] = self.model_cls._xapiand_schema
                 data = await client.put(index, body=body, id=id)
             else:
                 raise
+        data = self.model_cls._prepare_read_data(data)
         instance = self.model_cls(data)
         instance._index_params = index_params
         return instance
@@ -167,7 +234,7 @@ class Manager:
         )
         instances = []
         for hit in response.hits:
-            instance = self.model_cls(hit)
+            instance = self.model_cls(self.model_cls._prepare_read_data(hit))
             instance._index_params = index_params
             instances.append(instance)
         return SearchResults(
@@ -196,6 +263,7 @@ class Manager:
         index_params = self._extract_index_params(kwargs)
         index = self.model_cls.INDEX_TEMPLATE.format(**index_params)
         data = await client.get(index, id=id, volatile=volatile)
+        data = self.model_cls._prepare_read_data(data)
         instance = self.model_cls(data)
         instance._index_params = index_params
         return instance
@@ -250,6 +318,93 @@ class BaseXapianModel:
             manager = cls.default_manager_class()
             manager.model_cls = cls
             cls.objects = manager
+        if hasattr(cls, 'SCHEMA'):
+            cls._field_meta = _extract_field_meta(cls.SCHEMA)
+            cls._xapiand_schema = _clean_schema(cls.SCHEMA)
+        else:
+            cls._field_meta = {}
+            cls._xapiand_schema = {}
+
+    @classmethod
+    def _apply_defaults(cls, data: dict) -> None:
+        """Apply default values to missing fields in *data*.
+
+        For each field in the model's meta-properties that has a
+        ``_default`` entry, set the field in *data* if it is not already
+        present.  Callable defaults are invoked to produce the value.
+
+        Args:
+            data: Mutable document data dict.  Modified in place.
+        """
+        for field, meta in cls._field_meta.items():
+            if '_default' in meta and field not in data:
+                default = meta['_default']
+                data[field] = default() if callable(default) else default
+
+    @classmethod
+    def _validate(cls, data: dict) -> None:
+        """Validate *data* against the model's meta-property constraints.
+
+        Checks ``_required``, ``_null``, and ``_choices`` rules for every
+        field that has meta-properties defined.  Also enforces the null
+        constraint on schema fields that have no explicit meta-properties.
+
+        Args:
+            data: Document data dict to validate.
+
+        Raises:
+            ValueError: If any validation constraint is violated.
+        """
+        schema = getattr(cls, 'SCHEMA', {})
+        for field, meta in cls._field_meta.items():
+            if meta.get('_required') and field not in data:
+                raise ValueError(f"Field {field!r} is required")
+            if field in data:
+                value = data[field]
+                if value is None and not meta.get('_null'):
+                    raise ValueError(f"Field {field!r} does not allow None")
+                choices = meta.get('_choices')
+                if choices is not None and value is not None and value not in choices:
+                    raise ValueError(f"Field {field!r} must be one of {choices!r}, got {value!r}")
+        for field, defn in schema.items():
+            if field.startswith('_') or not isinstance(defn, dict):
+                continue
+            if field in cls._field_meta:
+                continue
+            if field in data and data[field] is None:
+                raise ValueError(f"Field {field!r} does not allow None")
+
+    @classmethod
+    def _prepare_write_body(cls, data: dict) -> dict:
+        """Return a copy of *data* with read-only fields removed.
+
+        Fields marked ``_read_only`` in the schema are excluded from the
+        dict sent to Xapiand on writes.
+
+        Args:
+            data: Document data dict.
+
+        Returns:
+            A new dict without read-only fields.
+        """
+        read_only = {f for f, m in cls._field_meta.items() if m.get('_read_only')}
+        return {k: v for k, v in data.items() if k not in read_only}
+
+    @classmethod
+    def _prepare_read_data(cls, data: dict) -> dict:
+        """Return a copy of *data* with write-only fields removed.
+
+        Fields marked ``_write_only`` in the schema are excluded from
+        the dict used to populate model instances on reads.
+
+        Args:
+            data: Document data dict returned by Xapiand.
+
+        Returns:
+            A new dict without write-only fields.
+        """
+        write_only = {f for f, m in cls._field_meta.items() if m.get('_write_only')}
+        return {k: v for k, v in data.items() if k not in write_only}
 
     def __init__(self, data: dict | None = None, /, **kwargs) -> None:
         """Initialise the model instance with document data.
@@ -321,16 +476,19 @@ class BaseXapianModel:
                 other than a missing schema.
         """
         index = self._get_index()
-        body = self._data
+        self._apply_defaults(self._data)
+        self._validate(self._data)
+        body = self._prepare_write_body(self._data)
+        doc_id = self._data.get('_id', self._data.get('id'))
         try:
-            data = await client.put(index, body=body, id=body.get('_id', body.get('id')))
+            data = await client.put(index, body=body, id=doc_id)
         except TransportError as exc:
             if exc.response.status_code == 412:
-                body = {**self._data, '_schema': self.SCHEMA}
-                data = await client.put(index, body=body, id=body.get('_id', body.get('id')))
+                body['_schema'] = self._xapiand_schema
+                data = await client.put(index, body=body, id=doc_id)
             else:
                 raise
-        self._data = data
+        self._data = self._prepare_read_data(data)
 
     async def delete(self) -> None:
         """Delete this document from Xapiand.
