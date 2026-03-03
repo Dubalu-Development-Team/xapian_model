@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.1] - 2026-03-03
+
+### Fixed
+
+- Add `_recurse=False` for object fields in schema provisioning.
+- Use `/test` prefix in all test indices for better isolation.
+
 ## [0.4.0] - 2026-02-26
 
 ### Added
