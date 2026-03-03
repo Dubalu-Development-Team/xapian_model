@@ -12,21 +12,21 @@ from xapian_model.base import BaseXapianModel
 class Product(BaseXapianModel):
     """Concrete model with template placeholders for testing."""
 
-    INDEX_TEMPLATE = "/products/{category}"
+    INDEX_TEMPLATE = "/test/products/{category}"
     SCHEMA = {"name": {"_type": "text"}, "price": {"_type": "floating"}}
 
 
 class SimpleModel(BaseXapianModel):
     """Concrete model with no template placeholders."""
 
-    INDEX_TEMPLATE = "/items"
+    INDEX_TEMPLATE = "/test/items"
     SCHEMA = {"title": {"_type": "text"}}
 
 
 class ValidatedModel(BaseXapianModel):
     """Concrete model with meta-properties for validation testing."""
 
-    INDEX_TEMPLATE = "/validated"
+    INDEX_TEMPLATE = "/test/validated"
     SCHEMA = {
         "name": {"_type": "text", "_required": True},
         "email": {"_type": "text", "_default": ""},

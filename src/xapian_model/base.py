@@ -55,6 +55,8 @@ def _clean_schema(schema: dict[str, Any]) -> dict[str, Any]:
             field = {k: v for k, v in value.items() if k not in _MODEL_META_PROPS}
             if '_type' in field:
                 field['_type'] = _TYPE_ALIASES.get(field['_type'], field['_type'])
+                if field['_type'] == 'object':
+                    field.setdefault('_recurse', False)
             cleaned[key] = field
         else:
             cleaned[key] = value

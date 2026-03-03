@@ -99,7 +99,7 @@ class TestManagerCreate:
         mock_client.put.return_value = {"id": "1", "name": "Phone", "category": "electronics"}
         product = await Product.objects.create(category="electronics", name="Phone")
 
-        mock_client.put.assert_called_once_with("/products/electronics", body={"name": "Phone"}, id=None)
+        mock_client.put.assert_called_once_with("/test/products/electronics", body={"name": "Phone"}, id=None)
         assert isinstance(product, Product)
         assert product.name == "Phone"
         assert product._index_params == {"category": "electronics"}
@@ -109,7 +109,7 @@ class TestManagerCreate:
         mock_client.put.return_value = {"id": "abc", "name": "Phone"}
         product = await Product.objects.create(id="abc", category="electronics", name="Phone")
 
-        mock_client.put.assert_called_once_with("/products/electronics", body={"name": "Phone"}, id="abc")
+        mock_client.put.assert_called_once_with("/test/products/electronics", body={"name": "Phone"}, id="abc")
         assert product.id == "abc"
 
     @pytest.mark.asyncio
@@ -153,7 +153,7 @@ class TestManagerFilter:
         result = await Product.objects.filter(category="electronics", query="*", limit=10)
 
         mock_client.search.assert_called_once_with(
-            "/products/electronics",
+            "/test/products/electronics",
             query="*",
             limit=10,
             offset=None,
@@ -187,7 +187,7 @@ class TestManagerGet:
         mock_client.get.return_value = {"id": "42", "name": "Widget"}
         product = await Product.objects.get(id="42", category="electronics")
 
-        mock_client.get.assert_called_once_with("/products/electronics", id="42", volatile=False)
+        mock_client.get.assert_called_once_with("/test/products/electronics", id="42", volatile=False)
         assert isinstance(product, Product)
         assert product.name == "Widget"
         assert product._index_params == {"category": "electronics"}
@@ -197,7 +197,7 @@ class TestManagerGet:
         mock_client.get.return_value = {"id": "42", "name": "Widget"}
         await Product.objects.get(id="42", category="electronics", volatile=True)
 
-        mock_client.get.assert_called_once_with("/products/electronics", id="42", volatile=True)
+        mock_client.get.assert_called_once_with("/test/products/electronics", id="42", volatile=True)
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +217,7 @@ class TestInitSubclass:
         custom_manager = Manager()
 
         class Custom(BaseXapianModel):
-            INDEX_TEMPLATE = "/custom"
+            INDEX_TEMPLATE = "/test/custom"
             SCHEMA = {}
             objects = custom_manager
 
@@ -228,7 +228,7 @@ class TestInitSubclass:
             pass
 
         class Special(BaseXapianModel):
-            INDEX_TEMPLATE = "/special"
+            INDEX_TEMPLATE = "/test/special"
             SCHEMA = {}
             default_manager_class = SpecialManager
 
@@ -307,11 +307,11 @@ class TestGetIndex:
     def test_with_index_params(self):
         p = Product({"name": "Phone"})
         p._index_params = {"category": "electronics"}
-        assert p._get_index() == "/products/electronics"
+        assert p._get_index() == "/test/products/electronics"
 
     def test_without_index_params_uses_data(self):
         p = Product({"category": "books", "name": "Novel"})
-        assert p._get_index() == "/products/books"
+        assert p._get_index() == "/test/products/books"
 
 
 # ---------------------------------------------------------------------------
@@ -328,7 +328,7 @@ class TestSave:
         p = SimpleModel({"id": "1", "title": "Old"})
         await p.save()
 
-        mock_client.put.assert_called_once_with("/items", body={"id": "1", "title": "Old"}, id="1")
+        mock_client.put.assert_called_once_with("/test/items", body={"id": "1", "title": "Old"}, id="1")
         assert p._data == {"id": "1", "name": "Updated"}
 
     @pytest.mark.asyncio
@@ -371,7 +371,7 @@ class TestDelete:
         p = SimpleModel({"id": "42", "title": "Doomed"})
         await p.delete()
 
-        mock_client.delete.assert_called_once_with("/items", id="42")
+        mock_client.delete.assert_called_once_with("/test/items", id="42")
 
 
 # ---------------------------------------------------------------------------
@@ -418,7 +418,7 @@ class TestCleanSchema:
     def test_resolves_json_type_alias(self):
         schema = {"metadata": {"_type": "json", "_required": True}}
         cleaned = _clean_schema(schema)
-        assert cleaned == {"metadata": {"_type": "object"}}
+        assert cleaned == {"metadata": {"_type": "object", "_recurse": False}}
 
     def test_preserves_non_aliased_types(self):
         schema = {"name": {"_type": "text"}}
@@ -485,7 +485,7 @@ class TestApplyDefaults:
 
     def test_callable_default(self):
         class CallableDefaultModel(BaseXapianModel):
-            INDEX_TEMPLATE = "/callable"
+            INDEX_TEMPLATE = "/test/callable"
             SCHEMA = {"tags": {"_type": "array", "_default": list}}
 
         data = {}
@@ -528,7 +528,7 @@ class TestValidate:
     def test_choices_none_with_null_skips(self):
         """When value is None and _null is set, choices check is skipped."""
         class NullChoiceModel(BaseXapianModel):
-            INDEX_TEMPLATE = "/nc"
+            INDEX_TEMPLATE = "/test/nc"
             SCHEMA = {"status": {"_type": "keyword", "_null": True, "_choices": ["a", "b"]}}
 
         NullChoiceModel._validate({"status": None})
@@ -536,7 +536,7 @@ class TestValidate:
     def test_schema_field_without_meta_null_raises(self):
         """Fields in schema without explicit meta still reject None."""
         class PlainModel(BaseXapianModel):
-            INDEX_TEMPLATE = "/plain"
+            INDEX_TEMPLATE = "/test/plain"
             SCHEMA = {"title": {"_type": "text"}}
 
         with pytest.raises(ValueError, match="'title' does not allow None"):
@@ -601,14 +601,14 @@ class TestInitSubclassMetaProps:
 
     def test_no_schema_gives_empty(self):
         class NoSchema(BaseXapianModel):
-            INDEX_TEMPLATE = "/no"
+            INDEX_TEMPLATE = "/test/no"
 
         assert NoSchema._field_meta == {}
         assert NoSchema._xapiand_schema == {}
 
     def test_json_type_alias_resolved_in_xapiand_schema(self):
         class JsonModel(BaseXapianModel):
-            INDEX_TEMPLATE = "/json"
+            INDEX_TEMPLATE = "/test/json"
             SCHEMA = {"payload": {"_type": "json", "_required": True}}
 
         assert JsonModel._xapiand_schema["payload"]["_type"] == "object"
